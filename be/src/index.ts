@@ -1,32 +1,32 @@
 require("dotenv").config();
 import express from "express";
 import cors from "cors";
+import path from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { TextBlock } from "@anthropic-ai/sdk/resources";
-import { BASE_PROMPT, getSystemPrompt } from "./prompts";
+import { BASE_PROMPT } from "./prompts";
 import { basePrompt as nodeBasePrompt } from "./defaults/node";
 import { basePrompt as reactBasePrompt } from "./defaults/react";
 
-// Initialize Anthropic SDK
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Create Express App
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Middleware
+// 🧠 Middleware
 app.use(cors());
 app.use(express.json());
 
-// 🔐 Add Headers Required for SharedArrayBuffer
+// ✅ Required headers for SharedArrayBuffer
 app.use((req, res, next) => {
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
   res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   next();
 });
 
-// Endpoint: /template
+// 📦 Serve static frontend (assumes Vite/Cra output in client/dist)
+app.use(express.static(path.join(__dirname, "../client/dist")));
+
 app.post("/template", async (req, res) => {
   const prompt = req.body.prompt;
 
@@ -54,38 +54,30 @@ app.post("/template", async (req, res) => {
         ],
         uiPrompts: [reactBasePrompt],
       });
-      return;
-    }
-
-    if (answer === "node") {
+    } else if (answer === "node") {
       res.json({
         prompts: [
           `Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${nodeBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
         ],
         uiPrompts: [nodeBasePrompt],
       });
-      return;
-    }
-
-    res.status(403).json({ message: "You can't access this" });
-  } catch (error) {
-    if (error instanceof Error) {
-      res
-        .status(500)
-        .json({ message: "An error occurred.", error: error.message });
     } else {
-      res.status(500).json({ message: "An unknown error occurred." });
+      res.status(403).json({ message: "You can't access this" });
     }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "An error occurred.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 });
 
-// Optional: /chat endpoint placeholder
-app.post("/chat", async (req, res) => {
-  res.json({ message: "Chat endpoint coming soon" });
+// Fallback: serve index.html for frontend routing
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
 
-// Start Server
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
