@@ -29,7 +29,7 @@ app.post("/template", async (req, res) => {
         },
       ],
       model: "claude-3-5-sonnet-20241022",
-      max_tokens: 8000,
+      max_tokens: 2000,
       system:
         "Return either node or react based on what do you think this project should be. Only return a single word either 'node' or 'react'. Do not return anything extra.",
     });
@@ -78,7 +78,7 @@ app.post("/chat", async (req, res) => {
     const response = await anthropic.messages.create({
       messages,
       model: "claude-3-5-sonnet-20241022",
-      max_tokens: 8000,
+      max_tokens: 2000,
       system: getSystemPrompt(),
     });
     console.log(response.content);
